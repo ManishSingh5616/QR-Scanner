@@ -9,7 +9,7 @@ class GeneratorScreen extends StatefulWidget {
 }
 
 class _GeneratorScreenState extends State<GeneratorScreen> {
-  final TextEditingController controller = TextEditingController();
+  final controller = TextEditingController();
   String data = "";
 
   @override
@@ -22,23 +22,21 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           children: [
             TextField(
               controller: controller,
-              decoration: const InputDecoration(labelText: "Enter Text or URL"),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: "Enter text or URL",
+              ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  data = controller.text;
-                });
+                setState(() => data = controller.text);
               },
               child: const Text("Generate"),
             ),
             const SizedBox(height: 20),
             if (data.isNotEmpty)
-              QrImageView(
-                data: data,
-                size: 200,
-              ),
+              QrImageView(data: data, size: 200),
           ],
         ),
       ),

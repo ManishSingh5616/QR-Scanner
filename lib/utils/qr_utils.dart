@@ -1,40 +1,95 @@
-enum QRType { url, wifi, contact, text }
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class QRUtils {
-  static QRType detectType(String data) {
-    if (data.startsWith("http")) {
-      return QRType.url;
-    } else if (data.startsWith("WIFI:")) {
-      return QRType.wifi;
-    } else if (data.contains("BEGIN:VCARD")) {
-      return QRType.contact;
+  static Future<void> handleQR(BuildContext context, String code) async {
+    if (code.startsWith("upi://")) {
+      await launchUrl(Uri.parse(code));
+    } else if (code.startsWith("WIFI:")) {
+      _wifi(context, code);
+    } else if (code.startsWith("BEGIN:VCARD")) {
+      _vcard(context, code);
+    } else if (code.startsWith("BEGIN:VEVENT")) {
+      _event(context, code);
+    } else if (code.startsWith("http")) {
+      await launchUrl(Uri.parse(code));
     } else {
-      return QRType.text;
+      _text(context, code);
     }
   }
 
-  static Map<String, String> parseWifi(String data) {
-    final result = <String, String>{};
+  static void _wifi(BuildContext context, String code) {
+    final ssid = _extract(code, "S:");
+    final type = _extract(code, "T:");
 
-    final cleaned = data.replaceAll("WIFI:", "").replaceAll(";", "\n");
-    final lines = cleaned.split("\n");
-
-    for (var line in lines) {
-      if (line.startsWith("S:")) result["ssid"] = line.substring(2);
-      if (line.startsWith("P:")) result["password"] = line.substring(2);
-      if (line.startsWith("T:")) result["type"] = line.substring(2);
-    }
-
-    return result;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("WiFi"),
+        content: Text("SSID: $ssid\nSecurity: $type"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"))
+        ],
+      ),
+    );
   }
 
-  static String parseVCardName(String data) {
-    final lines = data.split("\n");
-    for (var line in lines) {
-      if (line.startsWith("FN:")) {
-        return line.substring(3);
-      }
-    }
-    return "Unknown";
+  static void _vcard(BuildContext context, String code) {
+    final name = _extract(code, "FN:");
+    final phone = _extract(code, "TEL:");
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Contact"),
+        content: Text("Name: $name\nPhone: $phone"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"))
+        ],
+      ),
+    );
+  }
+
+  static void _event(BuildContext context, String code) {
+    final title = _extract(code, "SUMMARY:");
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Event"),
+        content: Text("Title: $title"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"))
+        ],
+      ),
+    );
+  }
+
+  static void _text(BuildContext context, String code) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        content: Text(code),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"))
+        ],
+      ),
+    );
+  }
+
+  static String _extract(String text, String key) {
+    final start = text.indexOf(key);
+    if (start == -1) return "";
+    final end = text.indexOf(";", start);
+    return text.substring(start + key.length,
+        end == -1 ? text.length : end);
   }
 }

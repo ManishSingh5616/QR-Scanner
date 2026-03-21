@@ -14,27 +14,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    loadHistory();
+    load();
   }
 
-  void loadHistory() async {
+  Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       history = prefs.getStringList("history") ?? [];
     });
   }
 
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("history");
+    setState(() => history.clear());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Scan History")),
+      appBar: AppBar(
+        title: const Text("History"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: clear,
+          )
+        ],
+      ),
       body: ListView.builder(
         itemCount: history.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(history[index]),
-          );
-        },
+        itemBuilder: (_, i) => ListTile(
+          title: Text(history[i]),
+        ),
       ),
     );
   }
