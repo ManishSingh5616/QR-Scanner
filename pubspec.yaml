@@ -10,26 +10,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.8
-
-  # QR scanning (camera)
   mobile_scanner: ^3.5.7
-
-  # QR generation
   qr_flutter: ^4.1.0
-
-  # Open links
   url_launcher: ^6.2.1
-
-  # Local storage (history)
   shared_preferences: ^2.2.2
-
-  # Pick image from gallery
   image_picker: ^1.0.7
-
-  # Scan QR from image (ML Kit)
   google_mlkit_barcode_scanning: ^0.10.0
+  ambient_light: ^0.1.0
+  permission_handler: ^11.3.0
 
 dev_dependencies:
   flutter_test:

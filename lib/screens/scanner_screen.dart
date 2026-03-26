@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:ambient_light/ambient_light.dart';
 
 import '../utils/qr_utils.dart';
 
@@ -18,37 +20,55 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   bool scanned = false;
   bool torch = false;
+  double zoom = 0.0;
 
-  // ✅ Save history (no duplicates)
+  final AmbientLight _ambientLight = AmbientLight();
+  StreamSubscription<double>? _lightSub;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🌑 Auto flashlight based on light
+    _lightSub = _ambientLight.ambientLightStream.listen((lux) {
+      if (lux < 10 && !torch) {
+        controller.toggleTorch();
+        setState(() => torch = true);
+      } else if (lux > 80 && torch) {
+        controller.toggleTorch();
+        setState(() => torch = false);
+      }
+    });
+  }
+
+  // ✅ Save history
   Future<void> saveHistory(String value) async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList("history") ?? [];
 
-    if (list.isEmpty || list.first != value) {
-      list.insert(0, value);
-    }
+    list.remove(value);
+    list.insert(0, value);
+
+    if (list.length > 50) list.removeLast();
 
     await prefs.setStringList("history", list);
   }
 
-  // ⚠️ Detect HTTP warning
+  // ⚠ HTTP warning
   Future<bool> showHttpWarning(String code) async {
     if (code.startsWith("http://")) {
       return await showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text("⚠ Unsafe Link"),
-          content: Text(
-              "This link is not secure:\n\n$code\n\nDo you want to continue?"),
+          content: Text("This link is not secure:\n\n$code"),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel"),
-            ),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel")),
             TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Open"),
-            ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Open")),
           ],
         ),
       ) ??
@@ -57,7 +77,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     return true;
   }
 
-  // ✅ Handle scan safely
+  // ✅ Handle scan
   Future<void> handle(String? code) async {
     if (code == null || scanned) return;
 
@@ -68,8 +88,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
       if (!mounted) return;
 
-      // ⚠️ HTTP check
       final allow = await showHttpWarning(code);
+      if (!mounted) return;
+
       if (!allow) {
         scanned = false;
         return;
@@ -80,47 +101,43 @@ class _ScannerScreenState extends State<ScannerScreen> {
       debugPrint("Error: $e");
     }
 
-    scanned = false;
+    // ❌ REMOVE instant reset
+    // scanned = false;
+
+    // ✅ ADD DELAY (IMPORTANT)
+    Future.delayed(const Duration(seconds: 3), () {
+      scanned = false;
+    });
   }
 
-  // 📷 Gallery Scan (ML Kit)
+  // 📷 Gallery scan
   Future<void> scanFromGallery() async {
-    try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.gallery);
+    final picker = ImagePicker();
 
+    try {
+      final image = await picker.pickImage(source: ImageSource.gallery);
       if (image == null) return;
 
       final inputImage = InputImage.fromFilePath(image.path);
-      final barcodeScanner = BarcodeScanner();
+      final scanner = BarcodeScanner();
 
-      final barcodes = await barcodeScanner.processImage(inputImage);
+      try {
+        final barcodes = await scanner.processImage(inputImage);
 
-      if (barcodes.isNotEmpty) {
-        for (final barcode in barcodes) {
-          final code = barcode.rawValue;
-
-          if (code != null) {
-            await handle(code);
-            break; // handle first valid result only
-          }
+        if (barcodes.isNotEmpty) {
+          final code = barcodes.first.rawValue;
+          if (code != null) await handle(code);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No QR found")),
+          );
         }
-      } else {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No QR code found in image")),
-        );
+      } finally {
+        scanner.close();
       }
-
-      barcodeScanner.close();
     } catch (e) {
-      debugPrint("Gallery Scan Error: $e");
-
-      if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to scan image")),
+        const SnackBar(content: Text("Scan failed")),
       );
     }
   }
@@ -128,6 +145,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   @override
   void dispose() {
     controller.dispose();
+    _lightSub?.cancel();
     super.dispose();
   }
 
@@ -136,52 +154,35 @@ class _ScannerScreenState extends State<ScannerScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 📷 Camera Scanner
-          MobileScanner(
-            controller: controller,
-            onDetect: (capture) {
-              final barcodes = capture.barcodes;
-
-              for (final barcode in barcodes) {
-                final code = barcode.rawValue;
-
-                if (code != null) {
-                  handle(code);
-                  break;
-                }
-              }
+          // 📷 Camera with pinch zoom
+          GestureDetector(
+            onScaleUpdate: (details) {
+              zoom = (zoom + details.scale - 1).clamp(0.0, 1.0);
+              controller.setZoomScale(zoom);
             },
-          ),
-
-          // 🌑 Dark overlay
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.6),
-              BlendMode.srcOut,
-            ),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.black,
-                    backgroundBlendMode: BlendMode.dstOut,
-                  ),
-                ),
-                Center(
-                  child: Container(
-                    width: 260,
-                    height: 260,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ],
+            child: MobileScanner(
+              controller: controller,
+              onDetect: (capture) {
+                for (final barcode in capture.barcodes) {
+                  final code = barcode.rawValue;
+                  if (code != null) {
+                    handle(code);
+                    break;
+                  }
+                }
+              },
             ),
           ),
 
-          // 🟩 Scan box border
+          // 🌑 Overlay with bright center
+          ClipPath(
+            clipper: ScannerOverlayClipper(),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.6),
+            ),
+          ),
+
+          // 🟩 Scan border
           Center(
             child: Container(
               width: 260,
@@ -193,7 +194,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
 
-          // 🔘 Bottom Controls
+          // 🔘 Controls
           Positioned(
             bottom: 40,
             left: 20,
@@ -201,23 +202,19 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 📷 Gallery button
                 FloatingActionButton(
                   heroTag: "gallery",
                   onPressed: scanFromGallery,
                   child: const Icon(Icons.photo),
                 ),
-
-                // 🔦 Torch
                 FloatingActionButton(
                   heroTag: "torch",
                   onPressed: () {
                     controller.toggleTorch();
                     setState(() => torch = !torch);
                   },
-                  child: Icon(
-                    torch ? Icons.flash_on : Icons.flash_off,
-                  ),
+                  child:
+                  Icon(torch ? Icons.flash_on : Icons.flash_off),
                 ),
               ],
             ),
@@ -226,4 +223,28 @@ class _ScannerScreenState extends State<ScannerScreen> {
       ),
     );
   }
+}
+
+// ✂️ Cutout overlay
+class ScannerOverlayClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path =
+    Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    const cut = 260.0;
+    final left = (size.width - cut) / 2;
+    final top = (size.height - cut) / 2;
+
+    final hole = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, top, cut, cut),
+        const Radius.circular(16),
+      ));
+
+    return Path.combine(PathOperation.difference, path, hole);
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
