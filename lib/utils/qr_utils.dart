@@ -3,6 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+// 🔥 NEW IMPORTS
+import '../utils/share_utils.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+
 class QRUtils {
   static const MethodChannel _channel = MethodChannel('wifi_connect');
 
@@ -11,7 +15,7 @@ class QRUtils {
     code = code.trim();
 
     try {
-      // 💰 UPI Payment (FIXED)
+      // 💰 UPI Payment
       if (code.startsWith("upi://")) {
         final uri = Uri.parse(code);
 
@@ -21,7 +25,6 @@ class QRUtils {
             const SnackBar(content: Text("No payment app found")),
           );
         }
-
       }
 
       // 📶 WiFi
@@ -29,16 +32,15 @@ class QRUtils {
         _handleWifi(context, code);
       }
 
-      // 🌐 Links
+      // 🌐 Links → NOW SHOW OPTIONS (FIXED)
       else if (code.startsWith("http://") ||
           code.startsWith("https://")) {
-        await launchUrl(Uri.parse(code),
-            mode: LaunchMode.externalApplication);
+        _showResultActions(context, code);
       }
 
       // 📄 Everything else
       else {
-        _showText(context, code);
+        _showResultActions(context, code);
       }
     } catch (e) {
       debugPrint("QR Error: $e");
@@ -63,7 +65,6 @@ class QRUtils {
             onPressed: () async {
               Navigator.pop(context);
 
-              // 🔥 Request permission (SAFE)
               final status = await Permission.location.request();
 
               if (!status.isGranted) {
@@ -77,7 +78,6 @@ class QRUtils {
                 return;
               }
 
-              // 🔥 Try native connect
               await connectWifi(ssid, password);
 
               if (!context.mounted) return;
@@ -91,19 +91,18 @@ class QRUtils {
             child: const Text("Connect"),
           ),
 
-          // ✅ ALWAYS KEEP THIS (important fallback)
           TextButton(
             onPressed: () async {
-            Navigator.pop(context);
+              Navigator.pop(context);
 
-            const platform = MethodChannel('wifi_connect');
+              const platform = MethodChannel('wifi_connect');
 
-            try {
-              await platform.invokeMethod('openWifiSettings');
-            } catch (e) {
-              debugPrint("Error opening settings: $e");
-            }
-          },
+              try {
+                await platform.invokeMethod('openWifiSettings');
+              } catch (e) {
+                debugPrint("Error opening settings: $e");
+              }
+            },
             child: const Text("Open Settings"),
           ),
 
@@ -128,7 +127,7 @@ class QRUtils {
     }
   }
 
-  // 📄 Text dialog
+  // 📄 OLD Text dialog (kept)
   static void _showText(BuildContext context, String text) {
     showDialog(
       context: context,
@@ -138,6 +137,111 @@ class QRUtils {
           TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text("OK"))
+        ],
+      ),
+    );
+  }
+
+  // 🔥 RESULT ACTIONS (MAIN FEATURE)
+  static void _showResultActions(BuildContext context, String text) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 25,
+          runSpacing: 25,
+          children: [
+
+            // 🌐 OPEN (only for links)
+            if (text.startsWith("http"))
+              _action(
+                icon: Icons.open_in_browser,
+                label: "Open",
+                onTap: () async {
+                  Navigator.pop(context);
+                  await launchUrl(Uri.parse(text),
+                      mode: LaunchMode.externalApplication);
+                },
+              ),
+
+            // 📤 SHARE
+            _action(
+              icon: Icons.share,
+              label: "Share",
+              onTap: () {
+                Navigator.pop(context);
+                ShareUtils.shareText(text);
+              },
+            ),
+
+            // 📋 COPY
+            _action(
+              icon: Icons.copy,
+              label: "Copy",
+              onTap: () {
+                Navigator.pop(context);
+                ShareUtils.copy(context, text);
+              },
+            ),
+
+            // 🔳 QR CODE
+            _action(
+              icon: Icons.qr_code,
+              label: "QR Code",
+              onTap: () {
+                Navigator.pop(context);
+                _showQR(context, text);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🎯 Action UI
+  static Widget _action({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 28,
+            child: Icon(icon, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
+  // 🔳 QR Preview
+  static void _showQR(BuildContext context, String text) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("QR Code"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(data: text, size: 200),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          )
         ],
       ),
     );
