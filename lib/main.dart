@@ -14,7 +14,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.green),
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+      ),
       home: const Home(),
     );
   }
@@ -45,13 +47,19 @@ class _HomeState extends State<Home> {
         onTap: (i) => setState(() => index = i),
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-              icon: Icon(Icons.qr_code_scanner), label: "Scan"),
+            icon: Image.asset("assets/icons/scan.png", width: 24),
+            label: "Scan",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.qr_code), label: "Generate"),
+            icon: Image.asset("assets/icons/generate.png", width: 24),
+            label: "Generate",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.history), label: "History"),
+            icon: Image.asset("assets/icons/history.png", width: 24),
+            label: "History",
+          ),
         ],
       ),
     );

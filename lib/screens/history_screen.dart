@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/qr_utils.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -46,6 +47,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         itemCount: history.length,
         itemBuilder: (_, i) => ListTile(
           title: Text(history[i]),
+          onTap: () {
+            QRUtils.handleQR(context, history[i]);
+          },
         ),
       ),
     );

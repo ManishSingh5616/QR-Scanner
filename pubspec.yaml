@@ -19,11 +19,7 @@ dependencies:
   google_mlkit_barcode_scanning: ^0.10.0
   ambient_light: ^0.1.0
   permission_handler: ^11.3.0
-
-  # 🔥 NEW: Sharing feature
   share_plus: ^7.2.1
-
-  # 🔥 OPTIONAL (for future: save/share QR as image)
   path_provider: ^2.1.2
 
 dev_dependencies:
@@ -43,4 +39,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/icons.png
+    - assets/icons/
