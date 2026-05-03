@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart' as mlkit;
 import 'package:ambient_light/ambient_light.dart';
 
 import '../utils/qr_utils.dart';
@@ -13,15 +13,18 @@ class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
 
   @override
-  State createState() => _ScannerScreenState();
+  State<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends State {
-  final MobileScannerController controller = MobileScannerController();
+class _ScannerScreenState extends State<ScannerScreen> {
+  late final MobileScannerController controller;
 
   bool scanned = false;
   bool torch = false;
-  double zoom = 0.0;
+  bool autoFlashEnabled = true;
+
+  double _currentZoom = 0.2;
+  double _startZoom = 0.2;
 
   final AmbientLight _ambientLight = AmbientLight();
   StreamSubscription? _lightSub;
@@ -30,8 +33,19 @@ class _ScannerScreenState extends State {
   void initState() {
     super.initState();
 
+    controller = MobileScannerController(
+      detectionSpeed: DetectionSpeed.unrestricted,
+      formats: [BarcodeFormat.qrCode],
+    );
+
+    /// 🔍 initial zoom
+    controller.setZoomScale(_currentZoom);
+
+    /// 🌙 auto flash (disabled after manual use)
     _lightSub = _ambientLight.ambientLightStream.listen((lux) {
-      if (lux < 15 && !torch) {
+      if (!autoFlashEnabled) return;
+
+      if (lux < 25 && !torch) {
         controller.toggleTorch();
         setState(() => torch = true);
       } else if (lux > 60 && torch) {
@@ -39,7 +53,6 @@ class _ScannerScreenState extends State {
         setState(() => torch = false);
       }
     });
-
   }
 
   Future saveHistory(String value) async {
@@ -52,7 +65,6 @@ class _ScannerScreenState extends State {
     if (list.length > 50) list.removeLast();
 
     await prefs.setStringList("history", list);
-
   }
 
   Future handle(String? code) async {
@@ -66,10 +78,9 @@ class _ScannerScreenState extends State {
 
     await QRUtils.handleQR(context, code);
 
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 2), () {
       scanned = false;
     });
-
   }
 
   Future scanFromGallery() async {
@@ -78,64 +89,25 @@ class _ScannerScreenState extends State {
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
 
-    final inputImage = InputImage.fromFilePath(image.path);
-    final scanner = BarcodeScanner();
+    final inputImage = mlkit.InputImage.fromFilePath(image.path);
+    final scanner = mlkit.BarcodeScanner();
 
-    final barcodes = await scanner.processImage(inputImage);
+    try {
+      final barcodes = await scanner.processImage(inputImage);
 
-    if (barcodes.isNotEmpty) {
-      final code = barcodes.first.rawValue;
-
-      if (code != null) {
-        final isLink = code.contains("http") ||
-            code.contains("https") ||
-            code.contains("www");
-
-        if (isLink) {
-          showModalBottomSheet(
-            context: context,
-            builder: (_) => Padding(
-              padding: const EdgeInsets.all(16),
-              child: Wrap(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.open_in_browser),
-                    title: const Text("Open Link"),
-                    onTap: () {
-                      Navigator.pop(context);
-                      handle(code);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.qr_code),
-                    title: const Text("Generate QR"),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              GeneratorScreenWithData(code),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        } else {
-          await handle(code);
-        }
+      if (barcodes.isNotEmpty) {
+        final code = barcodes.first.rawValue;
+        if (code != null) await handle(code);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No QR found")),
+        );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No QR found")),
-      );
+    } catch (e) {
+      debugPrint("Gallery scan error: $e");
     }
 
     scanner.close();
-
   }
 
   @override
@@ -150,25 +122,38 @@ class _ScannerScreenState extends State {
     return Scaffold(
       body: Stack(
         children: [
+          /// 📷 CAMERA + PINCH ZOOM
           GestureDetector(
-            onScaleUpdate: (details) {
-              zoom = (zoom + details.scale - 1).clamp(0.0, 1.0);
-              controller.setZoomScale(zoom);
+            behavior: HitTestBehavior.opaque,
+            onScaleStart: (details) {
+              _startZoom = _currentZoom;
+            },
+            onScaleUpdate: (details) async {
+              double newZoom = _startZoom * details.scale;
+
+              /// fallback for first pinch
+              if (_startZoom == 0.0) {
+                newZoom = details.scale - 1;
+              }
+
+              newZoom = newZoom.clamp(0.0, 1.0);
+
+              _currentZoom = newZoom;
+
+              await controller.setZoomScale(_currentZoom);
             },
             child: MobileScanner(
               controller: controller,
               onDetect: (capture) {
-                for (final barcode in capture.barcodes) {
-                  final code = barcode.rawValue;
-                  if (code != null) {
-                    handle(code);
-                    break;
-                  }
-                }
+                if (capture.barcodes.isEmpty) return;
+
+                final code = capture.barcodes.first.rawValue;
+                if (code != null) handle(code);
               },
             ),
           ),
 
+          /// 🔳 DARK OVERLAY
           ClipPath(
             clipper: ScannerOverlayClipper(),
             child: Container(
@@ -176,6 +161,7 @@ class _ScannerScreenState extends State {
             ),
           ),
 
+          /// 🎯 SCAN BOX
           Center(
             child: Container(
               width: 260,
@@ -190,6 +176,7 @@ class _ScannerScreenState extends State {
             ),
           ),
 
+          /// 🔘 BUTTONS
           Positioned(
             bottom: 40,
             left: 20,
@@ -208,6 +195,8 @@ class _ScannerScreenState extends State {
                 FloatingActionButton(
                   heroTag: "torch",
                   onPressed: () {
+                    autoFlashEnabled = false; // 🔒 disable auto
+
                     controller.toggleTorch();
                     setState(() => torch = !torch);
                   },
@@ -224,7 +213,6 @@ class _ScannerScreenState extends State {
         ],
       ),
     );
-
   }
 }
 
@@ -245,7 +233,6 @@ class ScannerOverlayClipper extends CustomClipper<Path> {
       ));
 
     return Path.combine(PathOperation.difference, path, hole);
-
   }
 
   @override
