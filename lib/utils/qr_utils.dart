@@ -29,12 +29,12 @@ class QRUtils {
 
       // 📶 WiFi
       else if (code.startsWith("WIFI:")) {
-        _handleWifi(context, code);
+        await _handleWifi(context, code); // Added await
       }
 
       // 🌐 Links & 📄 Everything else
       else {
-        _showResultActions(context, code);
+        await _showResultActions(context, code); // Added await
       }
     } catch (e) {
       debugPrint("QR Error: $e");
@@ -42,12 +42,13 @@ class QRUtils {
   }
 
   // 📶 WiFi Handler
-  static void _handleWifi(BuildContext context, String code) {
+  static Future<void> _handleWifi(BuildContext context, String code) async {
     final ssid = _extract(code, "S:");
     final password = _extract(code, "P:");
     final type = _extract(code, "T:");
 
-    showDialog(
+    // Added await here so it blocks until dismissed
+    await showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -78,7 +79,7 @@ class QRUtils {
                 debugPrint("Error opening settings: $e");
               }
             },
-            child: Text("Settings", style: TextStyle(color: primaryColor)),
+            child: const Text("Settings", style: TextStyle(color: primaryColor)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -136,10 +137,11 @@ class QRUtils {
   }
 
   // 🔥 RESULT ACTIONS (UPGRADED UI)
-  static void _showResultActions(BuildContext context, String text) {
+  static Future<void> _showResultActions(BuildContext context, String text) async {
     final isLink = text.startsWith("http://") || text.startsWith("https://");
 
-    showModalBottomSheet(
+    // Added await here so it blocks until bottom sheet is closed
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
