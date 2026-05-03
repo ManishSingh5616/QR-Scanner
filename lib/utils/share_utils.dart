@@ -13,7 +13,15 @@ class ShareUtils {
     Clipboard.setData(ClipboardData(text: text));
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Copied to clipboard")),
+      SnackBar(
+        content: const Text("Copied to clipboard"),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        backgroundColor: const Color(0xFF4B68FF),
+        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+      ),
     );
   }
 }

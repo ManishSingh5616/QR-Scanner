@@ -11,24 +11,21 @@ class GeneratorScreen extends StatefulWidget {
   const GeneratorScreen({super.key});
 
   @override
-  State createState() => _GeneratorScreenState();
+  State<GeneratorScreen> createState() => _GeneratorScreenState();
 }
 
-class _GeneratorScreenState extends State {
+class _GeneratorScreenState extends State<GeneratorScreen> {
   final controller = TextEditingController();
   final qrKey = GlobalKey();
-
   String data = "";
+
+  static const Color primaryColor = Color(0xFF4B68FF);
 
   Future<File?> captureQR() async {
     try {
-      final boundary =
-      qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-
+      final boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage();
-      final byteData =
-      await image.toByteData(format: ui.ImageByteFormat.png);
-
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
       final dir = await getTemporaryDirectory();
@@ -40,76 +37,143 @@ class _GeneratorScreenState extends State {
       debugPrint("Capture error: $e");
       return null;
     }
-
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Generate QR")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: const Text("Generate QR", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Enter text or URL",
-              ),
+            const Text(
+              "Encoded text or URL",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
             ),
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+                ],
               ),
-              onPressed: () {
-                setState(() => data = controller.text);
-              },
-              child: const Text("Generate"),
-            ),
-
-            const SizedBox(height: 20),
-
-            if (data.isNotEmpty)
-              RepaintBoundary(
-                key: qrKey,
-                child: QrImageView(
-                  data: data,
-                  size: 200,
-                  foregroundColor: Colors.black,
+              child: TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  hintText: "Enter plain text or a full URL...",
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
               ),
+            ),
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  setState(() => data = controller.text);
+                  FocusScope.of(context).unfocus(); // Dismiss keyboard
+                },
+                child: const Text("Generate Now", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 40),
 
             if (data.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              const Text(
+                "Preview",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))
+                    ],
+                  ),
+                  child: RepaintBoundary(
+                    key: qrKey,
+                    child: Container(
+                      color: Colors.white,
+                      child: QrImageView(
+                        data: data,
+                        size: 200,
+                        foregroundColor: Colors.black,
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
 
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.download, color: Colors.black),
-                    onPressed: () async {
-                      final file = await captureQR();
-                      if (file != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Saved successfully")),
-                        );
-                      }
-                    },
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      icon: const Icon(Icons.download, color: Colors.black87),
+                      label: const Text("Save Image", style: TextStyle(color: Colors.black87)),
+                      onPressed: () async {
+                        final file = await captureQR();
+                        if (file != null && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Saved successfully")),
+                          );
+                        }
+                      },
+                    ),
                   ),
-
-                  IconButton(
-                    icon: const Icon(Icons.share, color: Colors.black),
-                    onPressed: () async {
-                      final file = await captureQR();
-                      if (file != null) {
-                        Share.shareXFiles([XFile(file.path)]);
-                      }
-                    },
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black87,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.share, size: 20),
+                      label: const Text("Share QR"),
+                      onPressed: () async {
+                        final file = await captureQR();
+                        if (file != null) {
+                          Share.shareXFiles([XFile(file.path)]);
+                        }
+                      },
+                    ),
                   ),
                 ],
               )
@@ -118,7 +182,6 @@ class _GeneratorScreenState extends State {
         ),
       ),
     );
-
   }
 }
 
@@ -131,12 +194,29 @@ class GeneratorScreenWithData extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Generated QR")),
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: const Text("Generated QR", style: TextStyle(color: Colors.black87)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
       body: Center(
-        child: QrImageView(
-          data: data,
-          size: 250,
-          foregroundColor: Colors.black,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)
+            ],
+          ),
+          child: QrImageView(
+            data: data,
+            size: 250,
+            foregroundColor: Colors.black,
+            backgroundColor: Colors.white,
+          ),
         ),
       ),
     );
