@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/generator_screen.dart';
 import 'screens/history_screen.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  MobileAds.instance.initialize();
+
   runApp(const MyApp());
 }
 

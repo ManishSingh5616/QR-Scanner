@@ -138,7 +138,7 @@ class QRUtils {
 
   // 🔥 RESULT ACTIONS (UPGRADED UI)
   static Future<void> _showResultActions(BuildContext context, String text) async {
-    final isLink = text.startsWith("http://") || text.startsWith("https://");
+    final isLink = text.startsWith("http://") || text.startsWith("https://") || text.startsWith("www.");
 
     // Added await here so it blocks until bottom sheet is closed
     await showModalBottomSheet(
