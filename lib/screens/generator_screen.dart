@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../services/qr_service.dart';
 
 class GeneratorScreen extends StatefulWidget {
   const GeneratorScreen({super.key});
@@ -310,7 +311,8 @@ class _QRFormPageState extends State<QRFormPage> {
     }
   }
 
-  void generateQR() {
+  String? currentHistoryId;
+  Future<void> generateQR() async {
     switch (widget.title) {
       case "Text":
         qrData = textController.text;
@@ -388,6 +390,14 @@ Description: ${descriptionController.text}
         qrData = textController.text;
         break;
     }
+
+    //await StatsService.instance.incrementGenerated();
+
+    currentHistoryId = await QRService.instance.recordGenerated(
+      qrType: widget.title,
+      title: nameController.text.isNotEmpty ? nameController.text : widget.title,
+      data: qrData,
+    );
 
     setState(() {});
   }

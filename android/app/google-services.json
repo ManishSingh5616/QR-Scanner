@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "849955786766",
+    "project_id": "quickqr-600b4",
+    "storage_bucket": "quickqr-600b4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849955786766:android:926f338a257dca28962c5f",
+        "android_client_info": {
+          "package_name": "com.bynkai.quickqr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtUaXsYkC9GnOvvUmxrVRx1EptzE5M0nQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849955786766:android:c9c4d697ec2859db962c5f",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtUaXsYkC9GnOvvUmxrVRx1EptzE5M0nQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

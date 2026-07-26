@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/generator_screen.dart';
-import 'screens/history_screen.dart';
+import 'profile/profile_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'authentication/login_screen.dart';
+import 'authentication/verify_email_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   MobileAds.instance.initialize();
 
@@ -22,7 +33,48 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
       ),
-      home: const Home(),
+      routes: {
+        "/login": (_) => const LoginScreen(),
+        "/verify": (_) => const VerifyEmailScreen(),
+        "/home": (_) => const Home(),
+      },
+      home: const AuthWrapper(),
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+
+        // Loading
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // Not logged in
+        if (!snapshot.hasData) {
+          return const LoginScreen();
+        }
+        final user = snapshot.data!;
+        // Logged in but email not verified
+        if (!user.emailVerified) {
+          return const VerifyEmailScreen();
+        }
+
+        // Logged in & verified
+        return const Home();
+      },
     );
   }
 }
@@ -40,7 +92,7 @@ class _HomeState extends State<Home> {
   final screens = const [
     ScannerScreen(),
     GeneratorScreen(),
-    HistoryScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -62,8 +114,8 @@ class _HomeState extends State<Home> {
             label: "Generate",
           ),
           BottomNavigationBarItem(
-            icon: Image.asset("assets/icons/history.png", width: 24),
-            label: "History",
+            icon: Icon(Icons.person),
+            label: "Profile",
           ),
         ],
       ),

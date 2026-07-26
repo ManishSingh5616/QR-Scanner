@@ -1,152 +1,171 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../models/history_model.dart';
+import '../services/qr_service.dart';
 import '../utils/qr_utils.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
-
-  @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
-}
-
-class _HistoryScreenState extends State<HistoryScreen> {
-  List<String> history = [];
-  static const Color primaryColor = Color(0xFF4B68FF);
-
-  @override
-  void initState() {
-    super.initState();
-    load();
-  }
-
-  Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      history = prefs.getStringList("history") ?? [];
-    });
-  }
-
-  Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("history");
-    setState(() => history.clear());
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFF111827),
       appBar: AppBar(
-        title: const Text("History", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: const Text(
+          "History",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xFF111827),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
+          // Clear All History Button
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
             tooltip: "Clear All",
             onPressed: () {
-              if (history.isNotEmpty) {
-                showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text("Clear History"),
-                      content: const Text("Are you sure you want to delete all history?"),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-                        TextButton(
-                            onPressed: () {
-                              clear();
-                              Navigator.pop(ctx);
-                            },
-                            child: const Text("Clear", style: TextStyle(color: Colors.redAccent))
-                        ),
-                      ],
-                    )
-                );
-              }
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E2235),
+                  title: const Text(
+                    "Clear History",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  content: const Text(
+                    "Are you sure you want to delete all history? Your statistics will remain intact.",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text("Cancel"),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        QRService.instance.clearAllHistory();
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text(
+                        "Clear",
+                        style: TextStyle(color: Colors.redAccent),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
-          )
+          ),
         ],
       ),
-      body: history.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history_rounded, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text("No history yet", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
-          ],
-        ),
-      )
-          : ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: history.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) {
-          final item = history[i];
-          final isLink = item.startsWith("http");
+      body: StreamBuilder<List<HistoryModel>>(
+        stream: QRService.instance.streamHistory(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.blue),
+            );
+          }
 
-          return InkWell(
-            onTap: () => QRUtils.handleQR(context, item),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ],
-                border: Border.all(color: Colors.grey[100]!),
-              ),
-              child: Row(
+          final historyList = snapshot.data ?? [];
+
+          if (historyList.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isLink ? Icons.link : Icons.qr_code_2,
-                      color: primaryColor,
-                    ),
+                  Icon(Icons.history_rounded, size: 64, color: Colors.grey[700]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "No history yet",
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: historyList.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final item = historyList[index];
+              final isLink = item.data.startsWith("http");
+
+              return Dismissible(
+                key: Key(item.id),
+                direction: DismissDirection.endToStart,
+                onDismissed: (_) {
+                  QRService.instance.deleteHistory(item.id);
+                },
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                child: InkWell(
+                  onTap: () => QRUtils.handleQR(context, item.data),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E2235),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          item,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111827),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            isLink ? Icons.link : Icons.qr_code_2,
+                            color: Colors.blue,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isLink ? "URL" : "Text Data",
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title.isNotEmpty ? item.title : item.data,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "${item.type.toUpperCase()} • ${item.qrType}",
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: Colors.white54,
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),
