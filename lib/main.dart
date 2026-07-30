@@ -7,9 +7,11 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:email_otp/email_otp.dart'; // Make sure to import this
 
 import 'authentication/login_screen.dart';
 import 'authentication/verify_email_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +20,26 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await dotenv.load(fileName: ".env");
+
   MobileAds.instance.initialize();
+
+  // Configure Email OTP
+  EmailOTP.config(
+    appName: 'Quick Qr',
+    otpType: OTPType.numeric,
+    expiry: 300000, // 5 minutes in milliseconds
+    otpLength: 6,
+    emailTheme: EmailTheme.v1,
+  );
+
+  EmailOTP.setSMTP(
+    host: 'smtp.gmail.com',
+    emailPort: EmailPort.port587,
+    secureType: SecureType.tls,
+    username: dotenv.env['EMAIL_USERNAME']!,
+    password: dotenv.env['EMAIL_PASSWORD']!,
+  );
 
   runApp(const MyApp());
 }
@@ -35,7 +56,7 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         "/login": (_) => const LoginScreen(),
-        "/verify": (_) => const VerifyEmailScreen(),
+        "/verify": (_) => const VerifyEmailScreen(name: '', email: '', password: ''), // Updated to accept argument if needed
         "/home": (_) => const Home(),
       },
       home: const AuthWrapper(),
@@ -51,10 +72,8 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-
-        // Loading
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
@@ -62,17 +81,12 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Not logged in
+        // If user is not logged into Firebase, send to Login/OTP Request Screen
         if (!snapshot.hasData) {
           return const LoginScreen();
         }
-        final user = snapshot.data!;
-        // Logged in but email not verified
-        if (!user.emailVerified) {
-          return const VerifyEmailScreen();
-        }
 
-        // Logged in & verified
+        // If user is logged into Firebase, send straight to Home
         return const Home();
       },
     );

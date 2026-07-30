@@ -15,8 +15,8 @@ dependencies:
   qr_flutter: ^4.1.0
   url_launcher: ^6.2.1
   shared_preferences: ^2.2.2
-  image_picker: ^1.0.7
-  google_mlkit_barcode_scanning: ^0.10.0
+  image_picker: ^1.1.2
+  google_mlkit_barcode_scanning: ^0.14.2
   ambient_light: ^0.1.0
   permission_handler: ^11.3.0
   share_plus: ^7.2.1
@@ -30,6 +30,8 @@ dependencies:
   cloud_firestore: ^5.6.5
   firebase_analytics: ^11.4.3
   firebase_crashlytics: ^4.3.3
+  email_otp: ^3.1.2
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -49,3 +51,4 @@ flutter:
 
   assets:
     - assets/icons/
+    - .env

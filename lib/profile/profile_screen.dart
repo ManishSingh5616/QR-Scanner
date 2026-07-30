@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../authentication/auth_service.dart';
+import '../authentication/forgot_password.dart';
 import '../screens/history_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -59,8 +60,9 @@ class ProfileScreen extends StatelessWidget {
           final scanned =
               data["totalScanned"] ?? 0;
 
+          // Read verification status from Firestore database instead of Firebase Auth user object
           final verified =
-              user.emailVerified;
+              data["emailVerified"] ?? false;
 
           final initials = name
               .trim()
@@ -204,11 +206,32 @@ class ProfileScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>  HistoryScreen(),
+                                builder: (_) => HistoryScreen(),
                               ),
                             );
                           },
                         ),
+                      ),
+
+                      const Divider(height: 1),
+
+                      // Added Forgot Password Option inside Profile Settings
+                      ListTile(
+                        leading: const Icon(
+                          Icons.lock_reset,
+                          color: Colors.blue,
+                        ),
+                        title: const Text("Reset Password"),
+                        subtitle: const Text("Change or request a password reset OTP"),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordScreen(),
+                            ),
+                          );
+                        },
                       ),
 
                       const Divider(height: 1),

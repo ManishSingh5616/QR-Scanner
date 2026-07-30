@@ -1,23 +1,16 @@
 import 'package:flutter/material.dart';
-
 import 'auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() =>
-      _ForgotPasswordScreenState();
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState
-    extends State<ForgotPasswordScreen> {
-
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  final emailController =
-  TextEditingController();
-
+  final emailController = TextEditingController();
   bool loading = false;
 
   @override
@@ -26,7 +19,7 @@ class _ForgotPasswordScreenState
     super.dispose();
   }
 
-  Future<void> resetPassword() async {
+  Future<void> sendPasswordResetOtp() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -36,58 +29,35 @@ class _ForgotPasswordScreenState
     });
 
     try {
-      await AuthService.instance.forgotPassword(
-        emailController.text.trim(),
-      );
+      final email = emailController.text.trim();
+
+      // Send OTP to user's email for password reset verification
+      bool sent = await AuthService.instance.sendOtp(email: email);
 
       if (!mounted) return;
 
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) {
-          return AlertDialog(
-            title: const Text(
-              "Email Sent",
-            ),
-
-            content: Text(
-              "A password reset link has been sent to\n\n${emailController.text.trim()}",
-            ),
-
-            actions: [
-
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-
-                  Navigator.pop(context);
-                },
-
-                child: const Text(
-                  "OK",
-                ),
-              ),
-            ],
-          );
-        },
-      );
+      if (sent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Password reset OTP sent to your email.")),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to send OTP. Please try again.")),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            e.toString().replaceFirst(
-                "Exception: ", ""),
+            e.toString().replaceFirst("Exception: ", ""),
           ),
         ),
       );
     }
 
     if (!mounted) return;
-
     setState(() {
       loading = false;
     });
@@ -95,114 +65,71 @@ class _ForgotPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Forgot Password",
-        ),
+        title: const Text("Reset Password"),
       ),
-
       body: SafeArea(
-        child: Padding(
-          padding:
-          const EdgeInsets.all(20),
-
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
           child: Form(
             key: _formKey,
-
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.stretch,
-
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-
                 const SizedBox(height: 40),
-
                 const Icon(
                   Icons.lock_reset,
                   size: 90,
-                  color: Colors.orange,
+                  color: Colors.green,
                 ),
-
                 const SizedBox(height: 20),
-
                 const Text(
-                  "Reset Password",
+                  "Forgot Password",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
-                    fontWeight:
-                    FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-
-                const SizedBox(height: 15),
-
+                const SizedBox(height: 10),
                 const Text(
-                  "Enter your registered email address and we'll send you a password reset link.",
+                  "Enter your registered email to receive a password reset verification code",
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
                 ),
-
                 const SizedBox(height: 40),
-
                 TextFormField(
-                  controller:
-                  emailController,
-
-                  keyboardType:
-                  TextInputType.emailAddress,
-
-                  decoration:
-                  const InputDecoration(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
                     labelText: "Email",
-
-                    border:
-                    OutlineInputBorder(),
-
-                    prefixIcon:
-                    Icon(Icons.email),
+                    border: OutlineInputBorder(),
                   ),
-
                   validator: (value) {
-
-                    if (value == null ||
-                        value.trim().isEmpty) {
-                      return "Enter your email";
+                    if (value == null || value.trim().isEmpty) {
+                      return "Enter email";
                     }
-
-                    if (!RegExp(
-                        r'^[^@]+@[^@]+\.[^@]+')
-                        .hasMatch(value)) {
-                      return "Enter a valid email";
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                      return "Invalid email";
                     }
-
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 30),
-
                 SizedBox(
                   height: 55,
-
                   child: ElevatedButton(
-                    onPressed:
-                    loading
-                        ? null
-                        : resetPassword,
-
+                    onPressed: loading ? null : sendPasswordResetOtp,
                     child: loading
                         ? const SizedBox(
                       width: 25,
                       height: 25,
-                      child:
-                      CircularProgressIndicator(
-                        strokeWidth: 3,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 3),
                     )
                         : const Text(
-                      "Send Reset Link",
+                      "Send Reset OTP",
+                      style: TextStyle(fontSize: 16),
                     ),
                   ),
                 ),
