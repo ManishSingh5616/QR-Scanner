@@ -267,8 +267,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ScannerOverlayClipper(),
 
             child: Container(
-              color:
-              Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
             ),
           ),
 
@@ -356,7 +355,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
           /// 🎛️ BOTTOM CONTROLS
           Positioned(
-            bottom: 40,
+            bottom: 110,
             left: 30,
             right: 30,
 

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../authentication/auth_service.dart';
 import '../authentication/forgot_password.dart';
 import '../screens/history_screen.dart';
+import '../authentication/change_password_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -60,7 +61,6 @@ class ProfileScreen extends StatelessWidget {
           final scanned =
               data["totalScanned"] ?? 0;
 
-          // Read verification status from Firestore database instead of Firebase Auth user object
           final verified =
               data["emailVerified"] ?? false;
 
@@ -74,7 +74,13 @@ class ProfileScreen extends StatelessWidget {
               .toUpperCase();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
+            // Added extra bottom padding so content clears the floating navigation bar
+            padding: const EdgeInsets.only(
+              left: 18,
+              right: 18,
+              top: 18,
+              bottom: 120,
+            ),
             child: Column(
               children: [
 
@@ -215,20 +221,19 @@ class ProfileScreen extends StatelessWidget {
 
                       const Divider(height: 1),
 
-                      // Added Forgot Password Option inside Profile Settings
                       ListTile(
                         leading: const Icon(
                           Icons.lock_reset,
                           color: Colors.blue,
                         ),
-                        title: const Text("Reset Password"),
-                        subtitle: const Text("Change or request a password reset OTP"),
+                        title: const Text("Change Password"),
+                        subtitle: const Text("Update your account password securely"),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const ForgotPasswordScreen(),
+                              builder: (_) => const ChangePasswordScreen(),
                             ),
                           );
                         },
@@ -274,57 +279,54 @@ class ProfileScreen extends StatelessWidget {
                         onTap: () {
                           showDialog(
                             context: context,
-                            builder: (_) =>
-                                AlertDialog(
-                                  title: const Text(
-                                      "Delete Account"),
-                                  content: const Text(
-                                    "This action cannot be undone.\n\nAre you sure?",
-                                  ),
-                                  actions: [
-
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(
-                                            context);
-                                      },
-                                      child:
-                                      const Text("Cancel"),
-                                    ),
-
-                                    ElevatedButton(
-                                      style:
-                                      ElevatedButton
-                                          .styleFrom(
-                                        backgroundColor:
-                                        Colors.red,
-                                      ),
-                                      onPressed:
-                                          () async {
-                                        Navigator.pop(
-                                            context);
-
-                                        await AuthService
-                                            .instance
-                                            .deleteAccount();
-
-                                        if (context
-                                            .mounted) {
-                                          Navigator.pushNamedAndRemoveUntil(
-                                            context,
-                                            "/login",
-                                                (route) =>
-                                            false,
-                                          );
-                                        }
-                                      },
-                                      child:
-                                      const Text(
-                                        "Delete",
-                                      ),
-                                    ),
-                                  ],
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text("Delete Account"),
+                              content: const Text(
+                                "This action cannot be undone.\n\nAre you sure?",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext);
+                                  },
+                                  child: const Text("Cancel"),
                                 ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  onPressed: () async {
+                                    // 1. Close the dialog first
+                                    Navigator.pop(dialogContext);
+
+                                    try {
+                                      // 2. Perform account deletion via your AuthService
+                                      await AuthService.instance.deleteAccount();
+
+                                      // 3. Force route clearance to login screen
+                                      if (context.mounted) {
+                                        Navigator.pushNamedAndRemoveUntil(
+                                          context,
+                                          "/login",
+                                              (route) => false,
+                                        );
+                                      }
+                                    } catch (e) {
+                                      // Handle potential errors (e.g., requires-recent-login)
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text("Failed to delete account: ${e.toString()}"),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  child: const Text("Delete"),
+                                ),
+                              ],
+                            ),
                           );
                         },
                       ),

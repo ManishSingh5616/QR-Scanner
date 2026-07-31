@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -14,35 +15,27 @@ class GeneratorScreen extends StatefulWidget {
   const GeneratorScreen({super.key});
 
   @override
-  State<GeneratorScreen> createState() =>
-      _GeneratorScreenState();
+  State<GeneratorScreen> createState() => _GeneratorScreenState();
 }
 
-class _GeneratorScreenState
-    extends State<GeneratorScreen> {
-
+class _GeneratorScreenState extends State<GeneratorScreen> {
   BannerAd? bannerAd;
   bool isBannerLoaded = false;
 
   void loadBannerAd() {
     bannerAd = BannerAd(
       size: AdSize.banner,
-
-      adUnitId:
-      'ca-app-pub-3940256099942544/6300978111',
-
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           setState(() {
             isBannerLoaded = true;
           });
         },
-
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
         },
       ),
-
       request: const AdRequest(),
     );
 
@@ -52,14 +45,12 @@ class _GeneratorScreenState
   @override
   void initState() {
     super.initState();
-
     loadBannerAd();
   }
 
   @override
   void dispose() {
     bannerAd?.dispose();
-
     super.dispose();
   }
 
@@ -84,8 +75,9 @@ class _GeneratorScreenState
 
     return Scaffold(
       backgroundColor: const Color(0xFF111827),
+      extendBody: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
           "Create",
@@ -95,98 +87,94 @@ class _GeneratorScreenState
           ),
         ),
       ),
-
       body: SafeArea(
+        bottom: false,
         child: Column(
-        children: [
+          children: [
+            if (isBannerLoaded)
+              Container(
+                alignment: Alignment.center,
+                width: double.infinity,
+                height: bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: bannerAd!),
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                child: GridView.builder(
+                  itemCount: items.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 1,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
 
-          if (isBannerLoaded)
-            Container(
-              alignment: Alignment.center,
-              width: double.infinity,
-              height: bannerAd!.size.height.toDouble(),
-              child: AdWidget(ad: bannerAd!),
-            ),
-
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: GridView.builder(
-                itemCount: items.length,
-                gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 1,
-                ),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          transitionDuration:
-                          const Duration(milliseconds: 350),
-                          pageBuilder: (_, animation, __) => QRFormPage(
-                            title: item["title"] as String,
-                            icon: item["icon"] as IconData,
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            // Optimized transition duration for snappier performance
+                            transitionDuration: const Duration(milliseconds: 200),
+                            reverseTransitionDuration: const Duration(milliseconds: 150),
+                            pageBuilder: (_, animation, __) => QRFormPage(
+                              title: item["title"] as String,
+                              icon: item["icon"] as IconData,
+                            ),
+                            transitionsBuilder: (_, animation, __, child) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
                           ),
-                          transitionsBuilder:
-                              (_, animation, __, child) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween(
-                                  begin: const Offset(0.1, 0),
-                                  end: Offset.zero,
-                                ).animate(
-                                  CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOut,
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  item["icon"] as IconData,
+                                  color: Colors.greenAccent,
+                                  size: 30,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  item["title"] as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
                                   ),
                                 ),
-                                child: child,
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E2235),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            item["icon"] as IconData,
-                            color: Colors.blue,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            item["title"] as String,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-     ),
     );
   }
 }
@@ -205,58 +193,75 @@ class QRFormPage extends StatefulWidget {
   State<QRFormPage> createState() => _QRFormPageState();
 }
 
-class _QRFormPageState extends State<QRFormPage> {
+class _QRFormPageState extends State<QRFormPage> with SingleTickerProviderStateMixin {
   String qrData = "";
 
-  final ScreenshotController screenshotController =
-  ScreenshotController();
+  final ScreenshotController screenshotController = ScreenshotController();
+  final ScrollController scrollController = ScrollController();
 
-  final TextEditingController textController =
-  TextEditingController();
-
-  final TextEditingController nameController =
-  TextEditingController();
-
-  final TextEditingController orgController =
-  TextEditingController();
-
-  final TextEditingController addressController =
-  TextEditingController();
-
-  final TextEditingController phoneController =
-  TextEditingController();
-
-  final TextEditingController emailController =
-  TextEditingController();
-
-  final TextEditingController notesController =
-  TextEditingController();
-
-  final TextEditingController subjectController =
-  TextEditingController();
-
-  final TextEditingController bodyController =
-  TextEditingController();
-
-  final TextEditingController eventController =
-  TextEditingController();
-
-  final TextEditingController locationController =
-  TextEditingController();
-
-  final TextEditingController descriptionController =
-  TextEditingController();
-
-  final TextEditingController birthdayController =
-  TextEditingController();
-
-  final TextEditingController countryController =
-  TextEditingController();
+  final TextEditingController textController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController orgController = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController notesController = TextEditingController();
+  final TextEditingController subjectController = TextEditingController();
+  final TextEditingController bodyController = TextEditingController();
+  final TextEditingController eventController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController birthdayController = TextEditingController();
+  final TextEditingController countryController = TextEditingController();
 
   DateTime? startDate;
   DateTime? endDate;
-
   String wifiType = "WPA/WPA2";
+  String? currentHistoryId;
+
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutBack,
+    );
+
+    // Pre-fill prefixes for Instagram and Youtube if required
+    if (widget.title == "Instagram") {
+      textController.text = "https://instagram.com/";
+    } else if (widget.title == "Youtube") {
+      textController.text = "https://youtube.com/";
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    scrollController.dispose();
+    textController.dispose();
+    nameController.dispose();
+    orgController.dispose();
+    addressController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    notesController.dispose();
+    subjectController.dispose();
+    bodyController.dispose();
+    eventController.dispose();
+    locationController.dispose();
+    descriptionController.dispose();
+    birthdayController.dispose();
+    countryController.dispose();
+    super.dispose();
+  }
 
   Widget buildField(
       String hint,
@@ -265,19 +270,39 @@ class _QRFormPageState extends State<QRFormPage> {
       }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle:
-          const TextStyle(color: Colors.white54),
-          filled: true,
-          fillColor: const Color(0xFF1E2235),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: Colors.white54),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.15),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Colors.greenAccent,
+                  width: 1.5,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -286,7 +311,6 @@ class _QRFormPageState extends State<QRFormPage> {
 
   Future<void> pickDate(bool isStart) async {
     DateTime now = DateTime.now();
-
     final picked = await showDatePicker(
       context: context,
       initialDate: now,
@@ -311,24 +335,21 @@ class _QRFormPageState extends State<QRFormPage> {
     }
   }
 
-  String? currentHistoryId;
   Future<void> generateQR() async {
+    FocusScope.of(context).unfocus();
+
     switch (widget.title) {
       case "Text":
         qrData = textController.text;
         break;
-
       case "Website":
         qrData = textController.text.startsWith("http")
             ? textController.text
             : "https://${textController.text}";
         break;
-
       case "Wi-Fi":
-        qrData =
-        "WIFI:T:$wifiType;S:${textController.text};P:${phoneController.text};;";
+        qrData = "WIFI:T:$wifiType;S:${textController.text};P:${phoneController.text};;";
         break;
-
       case "Contacts":
       case "My Card":
         qrData = '''
@@ -343,21 +364,15 @@ NOTE:${notesController.text}
 END:VCARD
 ''';
         break;
-
       case "Phone":
         qrData = "tel:${phoneController.text}";
         break;
-
       case "E-mail":
-        qrData =
-        "mailto:${emailController.text}?subject=${subjectController.text}&body=${bodyController.text}";
+        qrData = "mailto:${emailController.text}?subject=${subjectController.text}&body=${bodyController.text}";
         break;
-
       case "SMS":
-        qrData =
-        "sms:${phoneController.text}?body=${bodyController.text}";
+        qrData = "sms:${phoneController.text}?body=${bodyController.text}";
         break;
-
       case "Calendar":
         qrData = '''
 Event: ${eventController.text}
@@ -367,31 +382,40 @@ Location: ${locationController.text}
 Description: ${descriptionController.text}
 ''';
         break;
-
       case "Whatsapp":
-        qrData =
-        "https://wa.me/${countryController.text}${phoneController.text}";
+        qrData = "https://wa.me/${countryController.text}${phoneController.text}";
         break;
-
       case "Instagram":
-        qrData = textController.text.startsWith("http")
-            ? textController.text
-            : "https://instagram.com/${textController.text}";
+        String val = textController.text.trim();
+        if (val.startsWith("https://instagram.com/https://instagram.com/")) {
+          val = val.replaceFirst("https://instagram.com/https://instagram.com/", "https://instagram.com/");
+        }
+        if (!val.startsWith("http")) {
+          qrData = "https://instagram.com/$val";
+        } else {
+          qrData = val;
+        }
         break;
-
       case "Facebook":
         qrData = textController.text.startsWith("http")
             ? textController.text
             : "https://facebook.com/${textController.text}";
         break;
-
       case "Youtube":
+        String val = textController.text.trim();
+        if (val.startsWith("https://youtube.com/https://youtube.com/")) {
+          val = val.replaceFirst("https://youtube.com/https://youtube.com/", "https://youtube.com/");
+        }
+        if (!val.startsWith("http")) {
+          qrData = "https://youtube.com/$val";
+        } else {
+          qrData = val;
+        }
+        break;
       case "Spotify":
         qrData = textController.text;
         break;
     }
-
-    //await StatsService.instance.incrementGenerated();
 
     currentHistoryId = await QRService.instance.recordGenerated(
       qrType: widget.title,
@@ -400,275 +424,173 @@ Description: ${descriptionController.text}
     );
 
     setState(() {});
+
+    _animationController.forward(from: 0.0);
+
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   Future<void> saveQR() async {
-    final Uint8List? image =
-    await screenshotController.capture();
-
+    final Uint8List? image = await screenshotController.capture();
     if (image == null) return;
-
-    final directory =
-    await getTemporaryDirectory();
-
+    final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/qr.png');
-
     await file.writeAsBytes(image);
-
     await GallerySaver.saveImage(file.path);
-
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("QR saved to gallery"),
-      ),
+      const SnackBar(content: Text("QR saved to gallery")),
     );
   }
 
   Future<void> shareQR() async {
-    final Uint8List? image =
-    await screenshotController.capture();
-
+    final Uint8List? image = await screenshotController.capture();
     if (image == null) return;
-
-    final directory =
-    await getTemporaryDirectory();
-
+    final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/qr.png');
-
     await file.writeAsBytes(image);
-
     await Share.shareXFiles([XFile(file.path)]);
   }
 
   Widget buildContent() {
     switch (widget.title) {
       case "Text":
-        return buildField(
-          "Enter text",
-          textController,
-          maxLines: 6,
-        );
-
+        return buildField("Enter text", textController, maxLines: 6);
       case "Website":
-        return buildField(
-          "Enter website URL",
-          textController,
-        );
-
+        return buildField("Enter website URL", textController);
       case "Wi-Fi":
         return Column(
           children: [
-            buildField(
-              "SSID / Network name",
-              textController,
-            ),
-            buildField(
-              "Password",
-              phoneController,
-            ),
-            DropdownButtonFormField(
-              value: wifiType,
-              dropdownColor:
-              const Color(0xFF1E2235),
-              style:
-              const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor:
-                const Color(0xFF1E2235),
-                border: OutlineInputBorder(
-                  borderRadius:
-                  BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+            buildField("SSID / Network name", textController),
+            buildField("Password", phoneController),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton(
+                      value: wifiType,
+                      dropdownColor: const Color(0xFF1E2235),
+                      style: const TextStyle(color: Colors.white),
+                      items: const [
+                        DropdownMenuItem(value: "WPA/WPA2", child: Text("WPA/WPA2")),
+                        DropdownMenuItem(value: "WEP", child: Text("WEP")),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          wifiType = value!;
+                        });
+                      },
+                    ),
+                  ),
                 ),
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: "WPA/WPA2",
-                  child: Text("WPA/WPA2"),
-                ),
-                DropdownMenuItem(
-                  value: "WEP",
-                  child: Text("WEP"),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  wifiType = value!;
-                });
-              },
             ),
           ],
         );
-
       case "Contacts":
         return Column(
           children: [
-            buildField(
-                "Full name", nameController),
-            buildField(
-                "Organisation", orgController),
-            buildField(
-                "Address", addressController),
-            buildField(
-                "Phone", phoneController),
-            buildField(
-                "Email", emailController),
-            buildField(
-              "Notes",
-              notesController,
-              maxLines: 4,
-            ),
+            buildField("Full name", nameController),
+            buildField("Organisation", orgController),
+            buildField("Address", addressController),
+            buildField("Phone", phoneController),
+            buildField("Email", emailController),
+            buildField("Notes", notesController, maxLines: 4),
           ],
         );
-
       case "Phone":
-        return buildField(
-          "Enter phone number",
-          phoneController,
-        );
-
+        return buildField("Enter phone number", phoneController);
       case "E-mail":
         return Column(
           children: [
-            buildField(
-                "Email address",
-                emailController),
-            buildField(
-                "Subject", subjectController),
-            buildField(
-              "Body",
-              bodyController,
-              maxLines: 5,
-            ),
+            buildField("Email address", emailController),
+            buildField("Subject", subjectController),
+            buildField("Body", bodyController, maxLines: 5),
           ],
         );
-
       case "SMS":
         return Column(
           children: [
-            buildField(
-                "Phone number",
-                phoneController),
-            buildField(
-              "Message",
-              bodyController,
-              maxLines: 5,
-            ),
+            buildField("Phone number", phoneController),
+            buildField("Message", bodyController, maxLines: 5),
           ],
         );
-
       case "Calendar":
         return Column(
           children: [
-            buildField(
-                "Event", eventController),
-
+            buildField("Event", eventController),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () =>
-                    pickDate(true),
-                child: Text(
-                  startDate == null
-                      ? "Choose Start Date"
-                      : startDate
-                      .toString()
-                      .split(" ")[0],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
+                onPressed: () => pickDate(true),
+                child: Text(startDate == null ? "Choose Start Date" : startDate.toString().split(" ")[0]),
               ),
             ),
-
             const SizedBox(height: 12),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () =>
-                    pickDate(false),
-                child: Text(
-                  endDate == null
-                      ? "Choose End Date"
-                      : endDate
-                      .toString()
-                      .split(" ")[0],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
+                onPressed: () => pickDate(false),
+                child: Text(endDate == null ? "Choose End Date" : endDate.toString().split(" ")[0]),
               ),
             ),
-
             const SizedBox(height: 14),
-
-            buildField(
-                "Location",
-                locationController),
-
-            buildField(
-              "Description",
-              descriptionController,
-              maxLines: 5,
-            ),
+            buildField("Location", locationController),
+            buildField("Description", descriptionController, maxLines: 5),
           ],
         );
-
       case "My Card":
         return Column(
           children: [
-            buildField(
-                "My name", nameController),
-            buildField(
-                "Phone", phoneController),
-            buildField(
-                "Email", emailController),
-            buildField(
-                "Address", addressController),
-            buildField(
-                "Birthday", birthdayController),
-            buildField(
-                "Organisation", orgController),
-            buildField(
-              "Notes",
-              notesController,
-              maxLines: 4,
-            ),
+            buildField("My name", nameController),
+            buildField("Phone", phoneController),
+            buildField("Email", emailController),
+            buildField("Address", addressController),
+            buildField("Birthday", birthdayController),
+            buildField("Organisation", orgController),
+            buildField("Notes", notesController, maxLines: 4),
           ],
         );
-
       case "Whatsapp":
         return Column(
           children: [
-            buildField(
-                "Country code",
-                countryController),
-            buildField(
-                "Phone number",
-                phoneController),
+            buildField("Country code", countryController),
+            buildField("Phone number", phoneController),
           ],
         );
-
       case "Instagram":
-        return buildField(
-          "Instagram URL or ID",
-          textController,
-        );
-
+        return buildField("Instagram URL or ID", textController);
       case "Facebook":
-        return buildField(
-          "Facebook URL or ID",
-          textController,
-        );
-
+        return buildField("Facebook URL or ID", textController);
       case "Youtube":
-        return buildField(
-          "Channel URL or Video URL",
-          textController,
-        );
-
+        return buildField("Channel URL or Video URL", textController);
       case "Spotify":
-        return buildField(
-          "Spotify URL",
-          textController,
-        );
-
+        return buildField("Spotify URL", textController);
       default:
         return const SizedBox();
     }
@@ -678,23 +600,23 @@ Description: ${descriptionController.text}
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF111827),
+      extendBody: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(widget.title),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         child: Column(
           children: [
             Icon(
               widget.icon,
-              color: Colors.blue,
+              color: Colors.greenAccent,
               size: 70,
             ),
-
             const SizedBox(height: 14),
-
             Text(
               widget.title,
               style: const TextStyle(
@@ -703,86 +625,99 @@ Description: ${descriptionController.text}
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 30),
-
             buildContent(),
-
             const SizedBox(height: 20),
-
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
                 onPressed: generateQR,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Colors.greenAccent,
+                  foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: const Text(
                   "Generate QR",
-                  style: TextStyle(fontSize: 18),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-
             const SizedBox(height: 30),
-
             if (qrData.isNotEmpty)
-              Column(
-                children: [
-                  Screenshot(
-                    controller:
-                    screenshotController,
-                    child: Container(
-                      padding:
-                      const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius:
-                        BorderRadius.circular(
-                            20),
-                      ),
-                      child: QrImageView(
-                        data: qrData,
-                        size: 220,
+              ScaleTransition(
+                scale: _scaleAnimation,
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Screenshot(
+                            controller: screenshotController,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: QrImageView(
+                                data: qrData,
+                                size: 220,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child:
-                        ElevatedButton.icon(
-                          onPressed: saveQR,
-                          icon: const Icon(
-                              Icons.download),
-                          label: const Text(
-                              "Save"),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: saveQR,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(alpha: 0.15),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.download),
+                            label: const Text("Save"),
+                          ),
                         ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      Expanded(
-                        child:
-                        ElevatedButton.icon(
-                          onPressed: shareQR,
-                          icon: const Icon(
-                              Icons.share),
-                          label:
-                          const Text("Share"),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: shareQR,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(alpha: 0.15),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.share),
+                            label: const Text("Share"),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
           ],
         ),

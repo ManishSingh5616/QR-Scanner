@@ -17,7 +17,7 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// --------------------------------------------------------
-  /// 1. Send OTP to Email
+  /// 1. Send OTP to Email (Used for Profile Change Password & Sign Up)
   /// --------------------------------------------------------
   Future<bool> sendOtp({required String email}) async {
     try {
@@ -36,7 +36,20 @@ class AuthService {
   }
 
   /// --------------------------------------------------------
-  /// 3. Complete Registration (Called AFTER OTP is successfully verified)
+  /// 3. Send Firebase Password Reset Email (Used for Logged-out Forgot Password)
+  /// --------------------------------------------------------
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_getFirebaseError(e));
+    } catch (e) {
+      throw Exception("Failed to send reset email: $e");
+    }
+  }
+
+  /// --------------------------------------------------------
+  /// 4. Complete Registration (Called AFTER OTP is successfully verified)
   /// --------------------------------------------------------
   Future<UserCredential> completeRegistrationAfterOtp({
     required String name,
@@ -44,7 +57,6 @@ class AuthService {
     required String password,
   }) async {
     try {
-      // Create user in Firebase Auth with the real password provided by user
       UserCredential credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
@@ -55,7 +67,6 @@ class AuthService {
       if (user != null) {
         await user.updateDisplayName(name);
 
-        // Save account data to Firestore after successful verification & creation
         await _firestore.collection("users").doc(user.uid).set({
           "uid": user.uid,
           "name": name,
@@ -77,7 +88,7 @@ class AuthService {
   }
 
   /// --------------------------------------------------------
-  /// 4. Standard Email/Password Login (No OTP)
+  /// 5. Standard Email/Password Login (No OTP)
   /// --------------------------------------------------------
   Future<UserCredential> login({
     required String email,
@@ -92,7 +103,6 @@ class AuthService {
       User? user = credential.user;
 
       if (user != null) {
-        // Update last login timestamp in Firestore
         await _firestore.collection("users").doc(user.uid).update({
           "lastLogin": FieldValue.serverTimestamp(),
         });
@@ -101,6 +111,46 @@ class AuthService {
       return credential;
     } on FirebaseAuthException catch (e) {
       throw Exception(_getFirebaseError(e));
+    }
+  }
+
+  /// --------------------------------------------------------
+  /// 6. Re-authenticate User (Required for sensitive changes if needed)
+  /// --------------------------------------------------------
+  Future<void> reauthenticate(String currentPassword) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null && user.email != null) {
+        AuthCredential credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        );
+        await user.reauthenticateWithCredential(credential);
+      } else {
+        throw Exception("No authenticated user found.");
+      }
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_getFirebaseError(e));
+    } catch (e) {
+      throw Exception("Re-authentication failed: $e");
+    }
+  }
+
+  /// --------------------------------------------------------
+  /// 7. Update Password (When Logged In via Profile)
+  /// --------------------------------------------------------
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        await user.updatePassword(newPassword);
+      } else {
+        throw Exception("No authenticated user found.");
+      }
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_getFirebaseError(e));
+    } catch (e) {
+      throw Exception("Failed to update password: $e");
     }
   }
 
@@ -140,6 +190,8 @@ class AuthService {
         return 'Incorrect password.';
       case 'invalid-credential':
         return 'Invalid email or password.';
+      case 'requires-recent-login':
+        return 'Please re-login before performing this action.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
       case 'network-request-failed':
