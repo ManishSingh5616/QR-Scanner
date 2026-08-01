@@ -76,19 +76,34 @@ class _ScannerScreenState extends State<ScannerScreen> {
     controller.setZoomScale(_currentZoom);
   }
 
+  String? _lastUpiCode;
+  DateTime? _lastUpiTime;
+
   Future<void> handle(String? code) async {
     if (code == null || scanned) return;
 
-    scanned = true;
+    final bool isUpi = code.startsWith("upi://");
 
-    // Show the result immediately
-    if (!mounted) return;
-    QRUtils.handleQR(context, code);
+    if (isUpi) {
+      final now = DateTime.now();
+      // Block duplicate UPI scans within 4 seconds
+      if (_lastUpiCode == code &&
+          _lastUpiTime != null &&
+          now.difference(_lastUpiTime!) < const Duration(seconds: 4)) {
+        return;
+      }
+      _lastUpiCode = code;
+      _lastUpiTime = now;
+    }
+
+    setState(() {
+      scanned = true;
+    });
 
     // Save to Firestore in the background
     QRService.instance
         .recordScanned(
-      qrType: "Scanned QR",
+      qrType: isUpi ? "UPI Payment" : "Scanned QR",
       title: "Scanned Code",
       data: code,
     )
@@ -96,11 +111,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
       debugPrint("Firestore save failed: $e");
     });
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
+    if (!mounted) return;
+
+    // Process the QR code (Launches UPI app or shows actions)
+    await QRUtils.handleQR(context, code);
+
+    // If it was a UPI QR, ensure the scanner stays locked for 4 seconds
+    // to prevent background re-triggers when returning from payment apps
+    if (isUpi) {
+      await Future.delayed(const Duration(seconds: 4));
+    }
+
+    // Reset scan state
+    if (mounted) {
+      setState(() {
         scanned = false;
-      }
-    });
+      });
+    }
   }
 
   Future scanFromGallery() async {

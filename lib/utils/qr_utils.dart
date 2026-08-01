@@ -42,12 +42,12 @@ class QRUtils {
   }
 
   // 📶 WiFi Handler
+  // 📶 WiFi Handler
   static Future<void> _handleWifi(BuildContext context, String code) async {
     final ssid = _extract(code, "S:");
     final password = _extract(code, "P:");
     final type = _extract(code, "T:");
 
-    // Added await here so it blocks until dismissed
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -80,32 +80,6 @@ class QRUtils {
               }
             },
             child: const Text("Settings", style: TextStyle(color: primaryColor)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              final status = await Permission.location.request();
-
-              if (!status.isGranted) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Location permission required")),
-                );
-                return;
-              }
-
-              await connectWifi(ssid, password);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Trying to connect...")),
-              );
-            },
-            child: const Text("Connect"),
           ),
         ],
       ),

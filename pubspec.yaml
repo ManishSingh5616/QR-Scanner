@@ -32,6 +32,7 @@ dependencies:
   firebase_crashlytics: ^4.3.3
   email_otp: ^3.1.2
   flutter_dotenv: ^5.2.1
+  font_awesome_flutter: ^10.7.0
 
 dev_dependencies:
   flutter_test:

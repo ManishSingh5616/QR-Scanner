@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -54,6 +55,42 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     super.dispose();
   }
 
+  /// Helper to return official brand icons and fallback to Material icons
+  IconData getBrandIcon(String title) {
+    switch (title) {
+      case "Whatsapp":
+        return FontAwesomeIcons.whatsapp;
+      case "Instagram":
+        return FontAwesomeIcons.instagram;
+      case "Facebook":
+        return FontAwesomeIcons.facebook;
+      case "Youtube":
+        return FontAwesomeIcons.youtube;
+      case "Spotify":
+        return FontAwesomeIcons.spotify;
+      case "Text":
+        return Icons.text_fields;
+      case "Website":
+        return Icons.link;
+      case "Wi-Fi":
+        return Icons.wifi;
+      case "Contacts":
+        return Icons.contacts;
+      case "Phone":
+        return Icons.phone;
+      case "E-mail":
+        return Icons.email;
+      case "SMS":
+        return Icons.sms;
+      case "Calendar":
+        return Icons.calendar_month;
+      case "My Card":
+        return Icons.badge;
+      default:
+        return Icons.qr_code;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = [
@@ -66,11 +103,11 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       {"title": "SMS", "icon": Icons.sms},
       {"title": "Calendar", "icon": Icons.calendar_month},
       {"title": "My Card", "icon": Icons.badge},
-      {"title": "Whatsapp", "icon": Icons.wechat},
-      {"title": "Instagram", "icon": Icons.photo_camera},
-      {"title": "Facebook", "icon": Icons.facebook_rounded},
-      {"title": "Youtube", "icon": Icons.smart_display},
-      {"title": "Spotify", "icon": Icons.album},
+      {"title": "Whatsapp", "icon": FontAwesomeIcons.whatsapp},
+      {"title": "Instagram", "icon": FontAwesomeIcons.instagram},
+      {"title": "Facebook", "icon": FontAwesomeIcons.facebook},
+      {"title": "Youtube", "icon": FontAwesomeIcons.youtube},
+      {"title": "Spotify", "icon": FontAwesomeIcons.spotify},
     ];
 
     return Scaffold(
@@ -111,18 +148,19 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   ),
                   itemBuilder: (context, index) {
                     final item = items[index];
+                    final title = item["title"] as String;
+                    final iconData = item["icon"] as IconData;
 
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            // Optimized transition duration for snappier performance
                             transitionDuration: const Duration(milliseconds: 200),
                             reverseTransitionDuration: const Duration(milliseconds: 150),
                             pageBuilder: (_, animation, __) => QRFormPage(
-                              title: item["title"] as String,
-                              icon: item["icon"] as IconData,
+                              title: title,
+                              icon: iconData,
                             ),
                             transitionsBuilder: (_, animation, __, child) {
                               return FadeTransition(
@@ -150,13 +188,13 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  item["icon"] as IconData,
+                                  iconData,
                                   color: Colors.greenAccent,
-                                  size: 30,
+                                  size: 28,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  item["title"] as String,
+                                  title,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -234,7 +272,6 @@ class _QRFormPageState extends State<QRFormPage> with SingleTickerProviderStateM
       curve: Curves.easeOutBack,
     );
 
-    // Pre-fill prefixes for Instagram and Youtube if required
     if (widget.title == "Instagram") {
       textController.text = "https://instagram.com/";
     } else if (widget.title == "Youtube") {
